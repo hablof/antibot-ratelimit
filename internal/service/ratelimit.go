@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	bucketSize        = 100
-	tokenRecoveryTime = time.Minute
+	// ratelimit [rpm] = bucketSize / tokenRecoveryTime
+	bucketSize        = 20
+	tokenRecoveryTime = 12 * time.Second
 	banDuration       = 2 * time.Minute
 	maskSize          = 24
 )
@@ -58,14 +59,18 @@ func (ul *unaryLimiter) isLimitOK() bool {
 
 // заполняет bucket token'ами до отказа
 func (ul *unaryLimiter) resetLimit() {
+
+loop:
 	for {
 		select {
 		case ul.tokenPool <- struct{}{}:
 
 		default:
-			return
+			break loop
 		}
 	}
+
+	ul.limitingMode.Store(false)
 }
 
 func newUnaryLimiter() *unaryLimiter {
@@ -108,16 +113,18 @@ func (rl *Ratelimiter) IsLimitOK(ip net.IP) bool {
 	return ul.isLimitOK()
 }
 
-func (rl *Ratelimiter) ResetLimit(ipWithPrefix net.IP) {
-	prefix := ipWithPrefix.Mask(rl.mask).String()
+func (rl *Ratelimiter) ResetLimit(prefix string) bool {
+	// prefix := ipWithPrefix.Mask(rl.mask).String()
 
 	rl.mapMutex.Lock()
 	ul, ok := rl.limiters[prefix]
 	rl.mapMutex.Unlock()
 
 	if !ok {
-		return
+		return false
 	}
 
 	ul.resetLimit()
+
+	return true
 }

@@ -6,12 +6,13 @@ import (
 )
 
 type Handler struct {
-	Ratelimiter
+	rl Ratelimiter
 }
 
 // middleware calls service func, so Ratelimiter is not coupled with http router libs / frameworks
 type Ratelimiter interface {
-	IsRatelimitOK(net.IP) bool
+	IsRatelimitOK(ip net.IP) bool
+	ResetLimit(prefix string) bool
 }
 
 func NewRouter() http.Handler {
