@@ -21,7 +21,9 @@ func (h *Handler) checkRatelimit(f http.HandlerFunc) http.HandlerFunc {
 		}
 
 		ip := net.ParseIP(r.Header.Get("X-Forwarded-For"))
-		if h.rl.IsRatelimitOK(ip) {
+		// log.Println(ip)
+		// log.Println(r.RemoteAddr)
+		if h.rl.IsLimitOK(ip) {
 			f(w, r)
 		} else {
 			h.requestLimitExceededHandle(w, r)

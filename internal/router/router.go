@@ -11,16 +11,19 @@ type Handler struct {
 
 // middleware calls service func, so Ratelimiter is not coupled with http router libs / frameworks
 type Ratelimiter interface {
-	IsRatelimitOK(ip net.IP) bool
+	IsLimitOK(ip net.IP) bool
 	ResetLimit(prefix string) bool
 }
 
-func NewRouter() http.Handler {
-	h := Handler{}
+func NewRouter(rl Ratelimiter) http.Handler {
+	h := Handler{
+		rl: rl,
+	}
 	sm := http.NewServeMux()
 	// handlers registration
 	// ...
 	// ...
+	sm.HandleFunc("/", h.staticResource)
 
 	return h.checkRatelimit(sm.ServeHTTP)
 }
