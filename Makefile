@@ -1,3 +1,8 @@
+# тесты долгие, 15+ секунд
 test:
 	go test ./... 
-# тесты долгие, 15+ секунд
+
+run:
+	docker-compose up -d
+stop:
+	docker-compose down

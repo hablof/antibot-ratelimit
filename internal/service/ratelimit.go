@@ -85,7 +85,7 @@ func newUnaryLimiter(bucketSize int, tokenRecoveryTime time.Duration, banDuratio
 	return &ul
 }
 
-// Ratelimiter -- структура верхнего уровня по отношнию к unaryLimiter
+// Ratelimiter - структура верхнего уровня по отношению к unaryLimiter
 // создаёт unaryLimiter'ы на префиксы ip, вызывает их методы
 type Ratelimiter struct {
 	mapMutex sync.Mutex
