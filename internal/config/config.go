@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	BucketSize  int           `yaml:"bucketsize"`
-	RPMLimit    int           `yaml:"rpmlimit"`
-	PrefixSize  int           `yaml:"prefixsize"`
+	WindowSize  time.Duration `yaml:"windowsize"`
+	WindowLimit int           `yaml:"windowlimit"`
 	BanDuration time.Duration `yaml:"banduration"`
+
+	PrefixSize int `yaml:"prefixsize"`
 }
 
 func ReadConfig(path string) (Config, error) {

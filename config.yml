@@ -1,4 +1,5 @@
-bucketsize: 20
-rpmlimit: 100
-prefixsize: 24
+windowsize: 1m
+windowlimit: 100
 banduration: 2m
+
+prefixsize: 24

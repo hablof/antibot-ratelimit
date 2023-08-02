@@ -12,8 +12,8 @@ import (
 
 var (
 	testConfig config.Config = config.Config{
-		BucketSize:  20,
-		RPMLimit:    100,
+		WindowSize:  12 * time.Second,
+		WindowLimit: 20,
 		PrefixSize:  24,
 		BanDuration: 2 * time.Minute,
 	}
@@ -27,7 +27,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -38,7 +38,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests and 21st blocked", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -54,7 +54,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("slow 20 requests, 21st but blocked anyway", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -72,7 +72,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("slow enough 25 requests, is not blocked", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 25; i++ {
 			ok := ul.isLimitOK()
@@ -86,7 +86,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests, 21st blocked, reset limiter and 22nd is valid again", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -108,7 +108,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests, reset limiter and 20 more valid requests again", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
+		ul := newUnaryLimiter(testConfig.WindowLimit, testConfig.WindowSize, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()

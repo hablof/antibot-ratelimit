@@ -93,17 +93,18 @@ type Ratelimiter struct {
 	mask     net.IPMask
 
 	// ratelimit [rpm] = bucketSize / tokenRecoveryTime
-	bucketSize        int
-	tokenRecoveryTime time.Duration
-	banDuration       time.Duration
+	bucketSize        int           //
+	tokenRecoveryTime time.Duration //
+
+	banDuration time.Duration
 }
 
 func NewRatelimiter(cfg config.Config) *Ratelimiter {
 
 	return &Ratelimiter{
-		bucketSize:        cfg.BucketSize,
+		bucketSize:        cfg.WindowLimit,
 		banDuration:       cfg.BanDuration,
-		tokenRecoveryTime: (time.Duration(cfg.BucketSize) * time.Minute) / time.Duration(cfg.RPMLimit),
+		tokenRecoveryTime: cfg.WindowSize,
 		limiters:          map[string]*unaryLimiter{},
 		mask:              net.CIDRMask(cfg.PrefixSize, 32),
 	}
