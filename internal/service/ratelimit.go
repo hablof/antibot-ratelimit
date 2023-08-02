@@ -5,19 +5,18 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hablof/antibot-ratelimit/internal/config"
 )
 
-const (
-	// ratelimit [rpm] = bucketSize / tokenRecoveryTime
-	bucketSize        = 20
-	tokenRecoveryTime = 12 * time.Second
-	banDuration       = 2 * time.Minute
-	maskSize          = 24
-)
+const ()
 
 type unaryLimiter struct {
 	limitingMode atomic.Bool
 	tokenPool    chan struct{}
+
+	tokenRecoveryTime time.Duration
+	banDuration       time.Duration
 }
 
 func (ul *unaryLimiter) isLimitOK() bool {
@@ -31,7 +30,7 @@ func (ul *unaryLimiter) isLimitOK() bool {
 	// isRateLimitOK вернёт true
 	case <-ul.tokenPool:
 		go func() {
-			time.Sleep(tokenRecoveryTime)
+			time.Sleep(ul.tokenRecoveryTime)
 
 			select {
 			case ul.tokenPool <- struct{}{}:
@@ -49,7 +48,7 @@ func (ul *unaryLimiter) isLimitOK() bool {
 		ul.limitingMode.Store(true)
 
 		go func() {
-			time.Sleep(banDuration)
+			time.Sleep(ul.banDuration)
 			ul.limitingMode.Store(false)
 		}()
 	}
@@ -73,10 +72,12 @@ loop:
 	ul.limitingMode.Store(false)
 }
 
-func newUnaryLimiter() *unaryLimiter {
+func newUnaryLimiter(bucketSize int, tokenRecoveryTime time.Duration, banDuration time.Duration) *unaryLimiter {
 	ul := unaryLimiter{
-		tokenPool:    make(chan struct{}, bucketSize),
-		limitingMode: atomic.Bool{},
+		tokenPool:         make(chan struct{}, bucketSize),
+		limitingMode:      atomic.Bool{},
+		tokenRecoveryTime: tokenRecoveryTime,
+		banDuration:       banDuration,
 	}
 
 	ul.resetLimit()
@@ -90,12 +91,21 @@ type Ratelimiter struct {
 	mapMutex sync.Mutex
 	limiters map[string]*unaryLimiter
 	mask     net.IPMask
+
+	// ratelimit [rpm] = bucketSize / tokenRecoveryTime
+	bucketSize        int
+	tokenRecoveryTime time.Duration
+	banDuration       time.Duration
 }
 
-func NewRatelimiter() *Ratelimiter {
+func NewRatelimiter(cfg config.Config) *Ratelimiter {
+
 	return &Ratelimiter{
-		limiters: map[string]*unaryLimiter{},
-		mask:     net.CIDRMask(maskSize, 32),
+		bucketSize:        cfg.BucketSize,
+		banDuration:       cfg.BanDuration,
+		tokenRecoveryTime: (time.Duration(cfg.BucketSize) * time.Minute) / time.Duration(cfg.RPMLimit),
+		limiters:          map[string]*unaryLimiter{},
+		mask:              net.CIDRMask(cfg.PrefixSize, 32),
 	}
 }
 
@@ -105,7 +115,7 @@ func (rl *Ratelimiter) IsLimitOK(ip net.IP) bool {
 	rl.mapMutex.Lock()
 	ul, ok := rl.limiters[prefix]
 	if !ok {
-		ul = newUnaryLimiter()
+		ul = newUnaryLimiter(rl.bucketSize, rl.tokenRecoveryTime, rl.banDuration)
 		rl.limiters[prefix] = ul
 	}
 	rl.mapMutex.Unlock()

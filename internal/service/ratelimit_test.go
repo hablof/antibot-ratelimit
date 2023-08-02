@@ -6,7 +6,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hablof/antibot-ratelimit/internal/config"
 	"github.com/stretchr/testify/assert"
+)
+
+var (
+	testConfig config.Config = config.Config{
+		BucketSize:  20,
+		RPMLimit:    100,
+		PrefixSize:  24,
+		BanDuration: 2 * time.Minute,
+	}
 )
 
 func Test_unaryLimiter_isLimitOK(t *testing.T) {
@@ -17,7 +27,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -28,7 +38,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests and 21st blocked", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -44,7 +54,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("slow 20 requests, 21st but blocked anyway", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -62,7 +72,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("slow enough 25 requests, is not blocked", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 25; i++ {
 			ok := ul.isLimitOK()
@@ -76,7 +86,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests, 21st blocked, reset limiter and 22nd is valid again", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -98,7 +108,7 @@ func Test_unaryLimiter_isLimitOK(t *testing.T) {
 	t.Run("fast valid 20 requests, reset limiter and 20 more valid requests again", func(t *testing.T) {
 		t.Parallel()
 
-		ul := newUnaryLimiter()
+		ul := newUnaryLimiter(testConfig.BucketSize, 12*time.Second, testConfig.BanDuration)
 
 		for i := 0; i < 20; i++ {
 			ok := ul.isLimitOK()
@@ -122,7 +132,7 @@ func Test_Ratelimiter(t *testing.T) {
 
 	t.Run("60 requests between 3 ip", func(t *testing.T) {
 
-		r := NewRatelimiter()
+		r := NewRatelimiter(testConfig)
 		for i := 0; i < 60; i++ {
 			assert.Equal(t, true, r.IsLimitOK(ips[i%3]))
 		}
@@ -130,7 +140,7 @@ func Test_Ratelimiter(t *testing.T) {
 
 	t.Run("one ip blocked, but other two is working", func(t *testing.T) {
 
-		r := NewRatelimiter()
+		r := NewRatelimiter(testConfig)
 		for i := 0; i < 20; i++ {
 			assert.Equal(t, true, r.IsLimitOK(ips[0]))
 		}
@@ -142,7 +152,7 @@ func Test_Ratelimiter(t *testing.T) {
 
 	t.Run("all three ip blocked, but one reseted and working again", func(t *testing.T) {
 
-		r := NewRatelimiter()
+		r := NewRatelimiter(testConfig)
 		for i := 0; i < 60; i++ {
 			assert.Equal(t, true, r.IsLimitOK(ips[i%3]))
 
@@ -152,7 +162,7 @@ func Test_Ratelimiter(t *testing.T) {
 		assert.Equal(t, false, r.IsLimitOK(ips[1]))
 		assert.Equal(t, false, r.IsLimitOK(ips[2]))
 
-		r.ResetLimit(ips[0].Mask(net.CIDRMask(maskSize, 32)).String())
+		r.ResetLimit(ips[0].Mask(net.CIDRMask(testConfig.PrefixSize, 32)).String())
 
 		assert.Equal(t, true, r.IsLimitOK(ips[0]))
 		assert.Equal(t, true, r.IsLimitOK(ips[0]))

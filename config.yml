@@ -1,0 +1,4 @@
+bucketsize: 20
+rpmlimit: 100
+prefixsize: 24
+banduration: 2m
